@@ -80,15 +80,21 @@ class TwoFactorController extends Controller
 
     /**
      * Generate and cache an OTP, then email it to the user.
+     * Returns true on success, false on mail failure.
      */
-    public static function sendOtp(\App\Models\User $user): void
+    public static function sendOtp(\App\Models\User $user): bool
     {
         $otp = str_pad(random_int(0, 999999), 6, '0', STR_PAD_LEFT);
 
         // Store OTP in cache for 5 minutes
         Cache::put('2fa_otp_' . $user->id, $otp, now()->addMinutes(5));
 
-        // Send email
-        Mail::to($user->email)->send(new TwoFactorOtpMail($otp, $user->first_name));
+        try {
+            Mail::to($user->email)->send(new TwoFactorOtpMail($otp, $user->first_name));
+            return true;
+        } catch (\Exception $e) {
+            \Illuminate\Support\Facades\Log::error('2FA mail failed: ' . $e->getMessage());
+            return false;
+        }
     }
 }

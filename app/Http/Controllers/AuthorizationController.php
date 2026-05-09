@@ -26,7 +26,14 @@ class AuthorizationController extends Controller
 
             // Store pending user in session and send OTP
             $request->session()->put('2fa_user_id', $user->id);
-            TwoFactorController::sendOtp($user);
+            $sent = TwoFactorController::sendOtp($user);
+
+            if (!$sent) {
+                $request->session()->forget('2fa_user_id');
+                return back()->withErrors([
+                    'email' => 'Could not send verification email. Please contact your administrator.',
+                ])->withInput();
+            }
 
             return redirect()->route('2fa.show');
         }
