@@ -15,6 +15,7 @@ use App\Http\Controllers\TwoFactorController;
 
 // Login Route
 Route::get('/', function () {return view('login');})->name('login')->middleware('guest');
+Route::get('/login', function () {return redirect('/');})->middleware('guest'); // alias for /login URL
 Route::post('/login', [AuthorizationController::class, 'login'])->name('login.submit')->middleware('throttle:5,2');
 Route::post('/logout', [AuthorizationController::class, 'logout'])->name('logout')->middleware('auth');
 

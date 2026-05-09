@@ -274,9 +274,7 @@
             updateCountdown();
             if (countdownSeconds <= 0) {
                 clearInterval(countdownTimer);
-                // Force logout via redirect
-                window.location.href = "{{ route('logout') }}";
-                // POST logout properly
+                // POST logout via form submit (logout route only accepts POST)
                 const f = document.createElement('form');
                 f.method = 'POST'; f.action = "{{ route('logout') }}";
                 const csrf = document.createElement('input');
