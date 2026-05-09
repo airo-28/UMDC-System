@@ -31,7 +31,7 @@ class AuthorizationController extends Controller
             if (!$sent) {
                 $request->session()->forget('2fa_user_id');
                 return back()->withErrors([
-                    'email' => 'Mail error — check Render logs. Key: ' . (config('services.resend.key') ? 'SET' : 'NOT SET'),
+                    'email' => 'Could not send verification email. Please contact your administrator.',
                 ])->withInput();
             }
 
