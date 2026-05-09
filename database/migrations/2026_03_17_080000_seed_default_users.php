@@ -15,7 +15,7 @@ return new class extends Migration
             [
                 'first_name' => 'Admin',
                 'last_name'  => 'User',
-                'email'      => 'admin@udc.com',
+                'email'      => 'yamikaaaa@gmail.com',
                 'role'       => 'admin',
                 'password'   => 'admin123',
                 'is_active'  => true,

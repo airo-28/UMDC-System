@@ -1,0 +1,100 @@
+/* ===== USER MANAGEMENT — Extra Styles ===== */
+/* Extends mp.css — same table, modal, and button conventions */
+
+/* Role Badges */
+.badge-role-admin {
+    background-color: #ffeaa7;
+    color: #d35400;
+}
+
+.badge-role-cashier {
+    background-color: #dfe6e9;
+    color: #2d3436;
+}
+
+.badge-role-kitchen {
+    background-color: #e8f5e9;
+    color: #2e7d32;
+}
+
+.badge-role-inventory {
+    background-color: #e3f2fd;
+    color: #1565c0;
+}
+
+/* Status Badges */
+.badge-active {
+    background-color: #e6fffa;
+    color: #00b894;
+}
+
+.badge-inactive {
+    background-color: #ffebee;
+    color: #d63031;
+}
+
+/* "You" Tag */
+.badge-you {
+    background-color: #2975da;
+    color: white;
+    font-size: 0.65rem;
+    font-weight: 800;
+    padding: 0.1rem 0.5rem;
+    border-radius: 2rem;
+    letter-spacing: 0.5px;
+    margin-left: 0.4rem;
+    vertical-align: middle;
+    text-transform: uppercase;
+}
+
+/* Form two-column grid (First/Last name) */
+.um-form-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1rem;
+}
+
+/* Form label */
+.um-label {
+    display: block;
+    font-size: 0.82rem;
+    font-weight: 600;
+    color: #636e72;
+    margin-bottom: 0.35rem;
+}
+
+/* Activate button (green icon) */
+.activate-button {
+    margin: 0;
+    padding: 0;
+    border: none;
+    background: none;
+    cursor: pointer;
+    color: #00b894;
+}
+
+.activate-button:hover .fa-circle-check {
+    color: #00b894;
+    transform: scale(1.2);
+}
+
+/* Deactivate button (red icon) */
+.deactivate-button {
+    margin: 0;
+    padding: 0;
+    border: none;
+    background: none;
+    cursor: pointer;
+    color: grey;
+}
+
+.deactivate-button:hover .fa-ban {
+    color: #d63031 !important;
+    transform: scale(1.2);
+}
+
+/* Error flash */
+.my-alert-error::before {
+    content: "!";
+    background: #d63031;
+}

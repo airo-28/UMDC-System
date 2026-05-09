@@ -10,11 +10,18 @@ use App\Http\Controllers\ReportController;
 use App\Http\Controllers\POSController;
 
 use App\Http\Controllers\ExportController;
+use App\Http\Controllers\UserManagementController;
+use App\Http\Controllers\TwoFactorController;
 
 // Login Route
 Route::get('/', function () {return view('login');})->name('login')->middleware('guest');
 Route::post('/login', [AuthorizationController::class, 'login'])->name('login.submit')->middleware('throttle:5,2');
 Route::post('/logout', [AuthorizationController::class, 'logout'])->name('logout')->middleware('auth');
+
+// 2FA Routes (no auth middleware — user is not yet fully authenticated)
+Route::get('/two-factor',        [TwoFactorController::class, 'show'])   ->name('2fa.show');
+Route::post('/two-factor/verify',[TwoFactorController::class, 'verify']) ->name('2fa.verify');
+Route::post('/two-factor/resend',[TwoFactorController::class, 'resend']) ->name('2fa.resend');
 
 // Main dashboard route — redirect to role-specific page
 Route::get('/main', function () {
@@ -92,6 +99,22 @@ Route::middleware(['auth', 'role:admin'])->group(function () {
     Route::delete('/products/{product}', [ProductController::class, 'destroy'])->name('products.destroy');
     Route::get('/pricinghistory', [ProductAuditLogController::class, 'index'])->name('pricing-history');
     Route::get('/wastelogs', [ProductAuditLogController::class, 'wasteLogs'])->name('waste.logs');
+});
+
+// === User Management (Admin only) ===
+Route::middleware(['auth', 'role:admin'])->group(function () {
+    Route::get('/users', [UserManagementController::class, 'index'])->name('users.index');
+    Route::post('/users', [UserManagementController::class, 'store'])->name('users.store');
+    Route::put('/users/{user}', [UserManagementController::class, 'update'])->name('users.update');
+    Route::patch('/users/{user}/toggle', [UserManagementController::class, 'toggleActive'])->name('users.toggle');
+});
+
+// === Database Backups (Admin only) ===
+Route::middleware(['auth', 'role:admin'])->group(function () {
+    Route::get('/backups',                          [\App\Http\Controllers\BackupController::class, 'index'])   ->name('backups.index');
+    Route::post('/backups/run',                     [\App\Http\Controllers\BackupController::class, 'run'])     ->name('backups.run');
+    Route::get('/backups/download/{filename}',      [\App\Http\Controllers\BackupController::class, 'download'])->name('backups.download');
+    Route::delete('/backups/{filename}',            [\App\Http\Controllers\BackupController::class, 'destroy']) ->name('backups.destroy');
 });
 
 // === Export Routes (Authenticated) ===

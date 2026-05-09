@@ -193,6 +193,35 @@
             </a>
         </div>
         @endif
+
+        {{-- ============================================ --}}
+        {{-- USER MANAGEMENT — Admin only --}}
+        {{-- ============================================ --}}
+        @if($userRole === 'admin')
+        <div class="user-management-container subsystem">
+            <div class="user-management">
+                <i class="fa-solid fa-users-gear me-3"></i>
+                <span class="subsystem-span">User Management</span>
+            </div>
+            <div class="subsystem-drop-down">
+                <i class="fa-solid fa-angles-right arrow-icon button"></i>
+            </div>
+        </div>
+        <div class="subsystem-feature">
+            <a href="{{ route('users.index') }}">
+                <div class="feature d-flex align-items-center">
+                    <i class="fa-solid fa-id-card me-3 sub-icon"></i>
+                    <span class="subsystem-span">Manage Accounts</span>
+                </div>
+            </a>
+            <a href="{{ route('backups.index') }}">
+                <div class="feature d-flex align-items-center">
+                    <i class="fa-solid fa-database me-3 sub-icon"></i>
+                    <span class="subsystem-span">Database Backups</span>
+                </div>
+            </a>
+        </div>
+        @endif
     </div>
     <form method="POST" action="{{ route('logout') }}" style="margin-top: auto;">
         @csrf
@@ -208,7 +237,86 @@
     @yield('content')
 </div>
 
+<!-- ===== SESSION TIMEOUT WARNING MODAL ===== -->
+<div id="sessionWarningModal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; z-index:10000; background:rgba(0,0,0,0.55); justify-content:center; align-items:center;">
+    <div style="background:white; border-radius:1.2rem; padding:2rem 2.5rem; width:380px; max-width:90%; box-shadow:0 20px 60px rgba(0,0,0,0.25); text-align:center;">
+        <div style="width:56px;height:56px;background:linear-gradient(135deg,#f39c12,#d68910);border-radius:50%;display:flex;align-items:center;justify-content:center;margin:0 auto 1rem;">
+            <i class="fa-solid fa-clock" style="color:white;font-size:1.4rem;"></i>
+        </div>
+        <h3 style="margin:0 0 0.5rem;font-size:1.1rem;color:#2d3436;font-weight:800;">Session Expiring Soon</h3>
+        <p style="margin:0 0 1.2rem;font-size:0.88rem;color:#636e72;line-height:1.5;">
+            Your session will expire in <strong id="sessionCountdown" style="color:#c0392b;">1:00</strong>.<br>
+            Click <strong>Stay Logged In</strong> to continue.
+        </p>
+        <div style="display:flex;gap:0.75rem;justify-content:center;">
+            <form method="POST" action="{{ route('logout') }}" style="margin:0;">
+                @csrf
+                <button type="submit" style="padding:0.55rem 1.3rem;border:1px solid #dfe6e9;background:white;border-radius:2rem;cursor:pointer;font-weight:600;color:#636e72;font-size:0.85rem;">Logout Now</button>
+            </form>
+            <button id="stayLoggedInBtn" style="padding:0.55rem 1.3rem;border:none;background:#2975da;color:white;border-radius:2rem;cursor:pointer;font-weight:700;font-size:0.85rem;box-shadow:0 3px 10px rgba(41,117,218,0.25);">
+                <i class="fa-solid fa-rotate-right" style="margin-right:0.3rem;"></i>Stay Logged In
+            </button>
+        </div>
+    </div>
+</div>
+<script>
+(function() {
+    const SESSION_MINUTES = 30;
+    const WARN_BEFORE_SECONDS = 60; // warn 1 min before expiry
+    let warningTimer, countdownTimer, countdownSeconds;
+
+    function showWarning() {
+        countdownSeconds = WARN_BEFORE_SECONDS;
+        document.getElementById('sessionWarningModal').style.display = 'flex';
+        updateCountdown();
+        countdownTimer = setInterval(() => {
+            countdownSeconds--;
+            updateCountdown();
+            if (countdownSeconds <= 0) {
+                clearInterval(countdownTimer);
+                // Force logout via redirect
+                window.location.href = "{{ route('logout') }}";
+                // POST logout properly
+                const f = document.createElement('form');
+                f.method = 'POST'; f.action = "{{ route('logout') }}";
+                const csrf = document.createElement('input');
+                csrf.type = 'hidden'; csrf.name = '_token'; csrf.value = '{{ csrf_token() }}';
+                f.appendChild(csrf); document.body.appendChild(f); f.submit();
+            }
+        }, 1000);
+    }
+
+    function updateCountdown() {
+        const m = String(Math.floor(countdownSeconds / 60)).padStart(2, '0');
+        const s = String(countdownSeconds % 60).padStart(2, '0');
+        const el = document.getElementById('sessionCountdown');
+        if (el) el.textContent = `${m}:${s}`;
+    }
+
+    function resetTimer() {
+        clearTimeout(warningTimer);
+        clearInterval(countdownTimer);
+        document.getElementById('sessionWarningModal').style.display = 'none';
+        const warnAt = (SESSION_MINUTES * 60 - WARN_BEFORE_SECONDS) * 1000;
+        warningTimer = setTimeout(showWarning, warnAt);
+    }
+
+    // Ping server to keep session alive
+    document.getElementById('stayLoggedInBtn')?.addEventListener('click', () => {
+        fetch(window.location.href, { method: 'GET', credentials: 'same-origin' });
+        resetTimer();
+    });
+
+    // Start timer on page load; reset on any user interaction
+    resetTimer();
+    ['click', 'keydown', 'mousemove', 'scroll'].forEach(evt =>
+        document.addEventListener(evt, resetTimer, { passive: true })
+    );
+})();
+</script>
+
 <!-- Export Date Range Modal (shared) -->
+
 <div id="exportDateRangeModal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; z-index:9999; background:rgba(0,0,0,0.5); justify-content:center; align-items:center;">
     <div style="background:white; border-radius:1rem; padding:2rem; width:400px; max-width:90%; box-shadow:0 10px 40px rgba(0,0,0,0.25);">
         <h3 style="margin:0 0 0.5rem 0; font-size:1.15rem; color:#2d3436;"><i class="fa-solid fa-file-export" style="margin-right:0.5rem; color:#2975da;"></i>Export Data</h3>
