@@ -13,7 +13,7 @@ RUN apt-get update && apt-get install -y \
     && apt-get install -y nodejs
 
 # Install PHP extensions (including PostgreSQL for Supabase)
-RUN docker-php-ext-install pdo_mysql pdo_pgsql mbstring exif pcntl bcmath gd
+RUN docker-php-ext-install pdo_mysql pdo_pgsql mbstring exif pcntl bcmath gd zip
 
 # Enable Apache mod_rewrite (required for Laravel routing)
 RUN a2enmod rewrite
