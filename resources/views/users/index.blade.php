@@ -119,7 +119,7 @@
                             @endif
                         </td>
                         <td style="color: #b2bec3; font-size: 0.85rem;">
-                            {{ $user->created_at->format('m/d/Y') }}
+                            {{ $user->created_at ? $user->created_at->format('m/d/Y') : 'N/A' }}
                         </td>
                         <td class="td-actions">
                             <div class="td-actions-container">

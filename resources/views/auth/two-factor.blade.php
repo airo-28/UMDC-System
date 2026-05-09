@@ -38,6 +38,8 @@
             border: 2px solid #e0e0e0; border-radius: 12px;
             outline: none; transition: border 0.2s;
             font-family: 'Segoe UI', sans-serif;
+            color: #2d3436 !important;
+            background: #ffffff !important;
         }
         .otp-inputs input:focus { border-color: #c0392b; box-shadow: 0 0 0 3px rgba(192,57,43,0.12); }
         .otp-hidden { display: none; }
