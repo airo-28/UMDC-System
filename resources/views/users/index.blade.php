@@ -4,62 +4,49 @@
     @vite(['resources/css/user-management.css'])
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
 
-    <div class="menu-pricing-parent-container">
+    {{-- ===== FLASH / ERROR ALERTS ===== --}}
+    @if(session('success'))
+        <div class="my-alert" id="flashAlert">{{ session('success') }}</div>
+    @endif
+    @if(session('error'))
+        <div class="my-alert my-alert-error" id="flashAlert">
+            <i class="fa-solid fa-circle-exclamation"></i> {{ session('error') }}
+        </div>
+    @endif
 
-        {{-- ===== FLASH MESSAGES ===== --}}
-        @if(session('success'))
-            <div class="my-alert" id="flashAlert">
-                {{ session('success') }}
-            </div>
-        @endif
-        @if(session('error'))
-            <div class="my-alert my-alert-error" id="flashAlert">
-                <i class="fa-solid fa-circle-exclamation"></i> {{ session('error') }}
-            </div>
-        @endif
+    <div class="menu-pricing-parent-container">
 
         {{-- ===== HEADER / CONTROLS ===== --}}
         <div class="header-container">
             <div class="controls-container">
-                {{-- Filter Dropdown --}}
+
+                {{-- Filter Icon + Dropdown (link-based like Menu & Pricing) --}}
                 <div style="position: relative;">
                     <div id="filter-button" class="filter-icon-container">
                         <i class="bi bi-funnel default-icon"></i>
                         <i class="bi bi-x-lg active-icon" style="display: none !important;"></i>
                     </div>
                     <div class="filter-dropdown" id="filterDropdown" style="display: none;">
-                        <form method="GET" action="{{ route('users.index') }}" class="filter-dropdown-form">
-                            @if(request('search')) <input type="hidden" name="search" value="{{ request('search') }}"> @endif
-                            <div class="filter-group">
-                                <label>Role</label>
-                                <select name="role">
-                                    <option value="">All Roles</option>
-                                    <option value="admin"              {{ request('role') === 'admin'              ? 'selected' : '' }}>Admin</option>
-                                    <option value="cashier"            {{ request('role') === 'cashier'            ? 'selected' : '' }}>Cashier</option>
-                                    <option value="kitchen_manager"    {{ request('role') === 'kitchen_manager'    ? 'selected' : '' }}>Kitchen Manager</option>
-                                    <option value="inventory_manager"  {{ request('role') === 'inventory_manager'  ? 'selected' : '' }}>Inventory Manager</option>
-                                </select>
-                            </div>
-                            <button type="submit" class="apply-filter-button">Apply Filter</button>
-                        </form>
+                        <a href="{{ route('users.index', ['search' => request('search')]) }}"
+                           class="filter-option" style="display:block; text-decoration:none; color:inherit;">All Roles</a>
+                        <a href="{{ route('users.index', ['role' => 'admin',            'search' => request('search')]) }}"
+                           class="filter-option" style="display:block; text-decoration:none; color:inherit;">Admin</a>
+                        <a href="{{ route('users.index', ['role' => 'cashier',          'search' => request('search')]) }}"
+                           class="filter-option" style="display:block; text-decoration:none; color:inherit;">Cashier</a>
+                        <a href="{{ route('users.index', ['role' => 'kitchen_manager',  'search' => request('search')]) }}"
+                           class="filter-option" style="display:block; text-decoration:none; color:inherit;">Kitchen Manager</a>
+                        <a href="{{ route('users.index', ['role' => 'inventory_manager','search' => request('search')]) }}"
+                           class="filter-option" style="display:block; text-decoration:none; color:inherit;">Inventory Manager</a>
                     </div>
                 </div>
 
                 {{-- Search --}}
                 <form method="GET" action="{{ route('users.index') }}">
-                    @if(request('role')) <input type="hidden" name="role" value="{{ request('role') }}"> @endif
+                    @if(request('role'))<input type="hidden" name="role" value="{{ request('role') }}">@endif
                     <input type="text" name="search" class="search-input"
                         placeholder="Search by name or email"
                         value="{{ request('search') }}">
                 </form>
-
-                {{-- Active Filter Badge --}}
-                @if(request('role'))
-                    <div class="active-filter-title">
-                        <i class="bi bi-funnel-fill"></i>
-                        {{ ucwords(str_replace('_', ' ', request('role'))) }}
-                    </div>
-                @endif
 
                 {{-- Add User Button --}}
                 <button class="add-item-button" id="openAddUserModal">
@@ -70,17 +57,38 @@
 
         {{-- ===== USERS TABLE ===== --}}
         <div class="table-container">
+
+            {{-- Active Filter Title (inside table card, like Menu & Pricing) --}}
+            @php
+                $roleIcons = [
+                    'admin'              => '<i class="fa-solid fa-shield-halved"></i>',
+                    'cashier'            => '<i class="fa-solid fa-cash-register"></i>',
+                    'kitchen_manager'    => '<i class="fa-solid fa-utensils"></i>',
+                    'inventory_manager'  => '<i class="fa-solid fa-boxes-stacked"></i>',
+                ];
+                $roleLabels = [
+                    'admin'              => 'Admin',
+                    'cashier'            => 'Cashier',
+                    'kitchen_manager'    => 'Kitchen Manager',
+                    'inventory_manager'  => 'Inventory Manager',
+                ];
+                $activeRole  = request('role');
+                $filterIcon  = $activeRole ? ($roleIcons[$activeRole]  ?? '<i class="bi bi-funnel-fill"></i>') : '<i class="bi bi-people-fill"></i>';
+                $filterLabel = $activeRole ? ($roleLabels[$activeRole] ?? ucfirst($activeRole)) : 'All Users';
+            @endphp
+            <div class="active-filter-title">{!! $filterIcon !!} {{ $filterLabel }}</div>
+
             <table>
                 <colgroup>
                     <col style="width: 22%">
-                    <col style="width: 28%">
+                    <col style="width: 27%">
                     <col style="width: 18%">
                     <col style="width: 12%">
                     <col style="width: 10%">
-                    <col style="width: 10%">
+                    <col style="width: 11%">
                 </colgroup>
                 <thead>
-                    <tr class="tr">
+                    <tr>
                         <th class="th">Name</th>
                         <th class="th">Email</th>
                         <th class="th">Role</th>
@@ -98,18 +106,17 @@
                                 <span class="badge-you">You</span>
                             @endif
                         </td>
-                        <td style="color: #636e72; font-size: 0.95rem;">{{ $user->email }}</td>
+                        <td style="color: #636e72; font-size: 0.92rem;">{{ $user->email }}</td>
                         <td>
                             @php
-                                $roleLabels = [
-                                    'admin'              => ['label' => 'Admin',             'class' => 'badge-role-admin'],
-                                    'cashier'            => ['label' => 'Cashier',           'class' => 'badge-role-cashier'],
-                                    'kitchen_manager'    => ['label' => 'Kitchen Mgr',       'class' => 'badge-role-kitchen'],
-                                    'inventory_manager'  => ['label' => 'Inventory Mgr',     'class' => 'badge-role-inventory'],
-                                ];
-                                $roleInfo = $roleLabels[$user->role] ?? ['label' => ucfirst($user->role), 'class' => ''];
+                                $rInfo = [
+                                    'admin'             => ['label' => 'Admin',         'class' => 'badge-role-admin'],
+                                    'cashier'           => ['label' => 'Cashier',        'class' => 'badge-role-cashier'],
+                                    'kitchen_manager'   => ['label' => 'Kitchen Mgr',   'class' => 'badge-role-kitchen'],
+                                    'inventory_manager' => ['label' => 'Inventory Mgr', 'class' => 'badge-role-inventory'],
+                                ][$user->role] ?? ['label' => ucfirst($user->role), 'class' => ''];
                             @endphp
-                            <span class="badge {{ $roleInfo['class'] }}">{{ $roleInfo['label'] }}</span>
+                            <span class="badge {{ $rInfo['class'] }}">{{ $rInfo['label'] }}</span>
                         </td>
                         <td>
                             @if($user->is_active)
@@ -123,7 +130,6 @@
                         </td>
                         <td class="td-actions">
                             <div class="td-actions-container">
-                                {{-- Edit Button --}}
                                 <button class="edit-button open-edit-modal"
                                     data-id="{{ $user->id }}"
                                     data-first="{{ $user->first_name }}"
@@ -134,7 +140,6 @@
                                     <i class="fa-solid fa-pencil"></i>
                                 </button>
 
-                                {{-- Toggle Active/Inactive --}}
                                 @if($user->id !== auth()->id())
                                 <form method="POST" action="{{ route('users.toggle', $user) }}" style="margin:0;">
                                     @csrf
@@ -172,33 +177,47 @@
         <div class="floating-add-item">
             <span><i class="fa-solid fa-user-plus me-2" style="color:#2975da;"></i>Add New User</span>
         </div>
+
+        {{-- Validation errors for add form --}}
+        @if($errors->any() && old('_form') === 'add')
+            <div style="background:#fff5f5; border-left:4px solid #d63031; padding:0.8rem 1.5rem; margin:0.5rem 1.5rem; border-radius:8px; font-size:0.85rem; color:#d63031;">
+                @foreach($errors->all() as $error)
+                    <div>• {{ $error }}</div>
+                @endforeach
+            </div>
+        @endif
+
         <form method="POST" action="{{ route('users.store') }}" class="POST-class">
             @csrf
+            <input type="hidden" name="_form" value="add">
             <div class="um-form-grid">
                 <div>
                     <label class="um-label">First Name</label>
-                    <input type="text" name="first_name" class="input" placeholder="e.g. Juan" required>
+                    <input type="text" name="first_name" class="input" placeholder="e.g. Juan"
+                        value="{{ old('first_name') }}" required>
                 </div>
                 <div>
                     <label class="um-label">Last Name</label>
-                    <input type="text" name="last_name" class="input" placeholder="e.g. Dela Cruz" required>
+                    <input type="text" name="last_name" class="input" placeholder="e.g. Dela Cruz"
+                        value="{{ old('last_name') }}" required>
                 </div>
             </div>
             <div>
                 <label class="um-label">Email Address</label>
-                <input type="email" name="email" class="input" placeholder="e.g. juan@udc.edu.ph" required>
+                <input type="email" name="email" class="input" placeholder="e.g. juan@umindanao.edu.ph"
+                    value="{{ old('email') }}" required>
             </div>
             <div>
                 <label class="um-label">Role</label>
                 <div class="category-input-wrapper">
-                    <input type="radio" name="role" id="add-role-admin"     value="admin">
+                    <input type="radio" name="role" id="add-role-admin"     value="admin"             {{ old('role') === 'admin'             ? 'checked' : '' }}>
                     <label for="add-role-admin">Admin</label>
-                    <input type="radio" name="role" id="add-role-cashier"   value="cashier" checked>
+                    <input type="radio" name="role" id="add-role-cashier"   value="cashier"           {{ old('role', 'cashier') === 'cashier' ? 'checked' : '' }}>
                     <label for="add-role-cashier">Cashier</label>
-                    <input type="radio" name="role" id="add-role-kitchen"   value="kitchen_manager">
-                    <label for="add-role-kitchen">Kitchen Mgr</label>
-                    <input type="radio" name="role" id="add-role-inventory" value="inventory_manager">
-                    <label for="add-role-inventory">Inventory Mgr</label>
+                    <input type="radio" name="role" id="add-role-kitchen"   value="kitchen_manager"   {{ old('role') === 'kitchen_manager'   ? 'checked' : '' }}>
+                    <label for="add-role-kitchen">Kitchen</label>
+                    <input type="radio" name="role" id="add-role-inventory" value="inventory_manager" {{ old('role') === 'inventory_manager' ? 'checked' : '' }}>
+                    <label for="add-role-inventory">Inventory</label>
                 </div>
             </div>
             <div>
@@ -217,9 +236,20 @@
         <div class="floating-edit-item">
             <span><i class="fa-solid fa-user-pen me-2" style="color:#2975da;"></i>Edit User</span>
         </div>
+
+        {{-- Validation errors for edit form --}}
+        @if($errors->any() && old('_form') === 'edit')
+            <div style="background:#fff5f5; border-left:4px solid #d63031; padding:0.8rem 1.5rem; margin:0.5rem 1.5rem; border-radius:8px; font-size:0.85rem; color:#d63031;">
+                @foreach($errors->all() as $error)
+                    <div>• {{ $error }}</div>
+                @endforeach
+            </div>
+        @endif
+
         <form method="POST" action="" id="editUserForm" class="floating-edit-item-form">
             @csrf
             @method('PUT')
+            <input type="hidden" name="_form" value="edit">
             <div class="um-form-grid">
                 <div>
                     <label class="um-label">First Name</label>
@@ -242,9 +272,9 @@
                     <input type="radio" name="role" id="edit-role-cashier"   value="cashier">
                     <label for="edit-role-cashier">Cashier</label>
                     <input type="radio" name="role" id="edit-role-kitchen"   value="kitchen_manager">
-                    <label for="edit-role-kitchen">Kitchen Mgr</label>
+                    <label for="edit-role-kitchen">Kitchen</label>
                     <input type="radio" name="role" id="edit-role-inventory" value="inventory_manager">
-                    <label for="edit-role-inventory">Inventory Mgr</label>
+                    <label for="edit-role-inventory">Inventory</label>
                 </div>
             </div>
             <div>
@@ -261,6 +291,11 @@
     <div class="overlay" id="overlay"></div>
 
     <script>
+        const overlay   = document.getElementById('overlay');
+        const addModal  = document.getElementById('addUserModal');
+        const editModal = document.getElementById('editUserModal');
+        const editForm  = document.getElementById('editUserForm');
+
         // ===== Flash Alert Auto-Hide =====
         const flashAlert = document.getElementById('flashAlert');
         if (flashAlert) {
@@ -271,11 +306,24 @@
             }, 3500);
         }
 
+        // ===== Auto-open modal if validation failed =====
+        @if($errors->any() && old('_form') === 'add')
+            addModal.classList.add('show');
+            overlay.classList.add('show');
+        @endif
+        @if($errors->any() && old('_form') === 'edit')
+            editModal.classList.add('show');
+            overlay.classList.add('show');
+            // Restore the edit form action from session if needed
+        @endif
+
         // ===== Filter Toggle =====
-        const filterBtn = document.getElementById('filter-button');
+        const filterBtn      = document.getElementById('filter-button');
         const filterDropdown = document.getElementById('filterDropdown');
-        filterBtn?.addEventListener('click', () => {
-            filterDropdown.style.display = filterDropdown.style.display === 'none' ? 'block' : 'none';
+        filterBtn?.addEventListener('click', (e) => {
+            e.stopPropagation();
+            const isOpen = filterDropdown.style.display !== 'none';
+            filterDropdown.style.display = isOpen ? 'none' : 'block';
         });
         document.addEventListener('click', (e) => {
             if (!filterBtn.contains(e.target) && !filterDropdown.contains(e.target)) {
@@ -284,8 +332,6 @@
         });
 
         // ===== Add User Modal =====
-        const overlay = document.getElementById('overlay');
-        const addModal = document.getElementById('addUserModal');
         document.getElementById('openAddUserModal')?.addEventListener('click', () => {
             addModal.classList.add('show');
             overlay.classList.add('show');
@@ -296,9 +342,6 @@
         });
 
         // ===== Edit User Modal =====
-        const editModal = document.getElementById('editUserModal');
-        const editForm  = document.getElementById('editUserForm');
-
         document.querySelectorAll('.open-edit-modal').forEach(btn => {
             btn.addEventListener('click', () => {
                 const id    = btn.dataset.id;
@@ -312,23 +355,21 @@
                 document.getElementById('edit-email').value      = email;
                 document.getElementById('edit-password').value   = '';
 
-                // Set role radio
                 const roleRadio = document.querySelector(`input[name="role"][value="${role}"]`);
                 if (roleRadio) roleRadio.checked = true;
 
-                // Update form action
                 editForm.action = `/users/${id}`;
 
                 editModal.classList.add('show');
                 overlay.classList.add('show');
             });
         });
-
         document.getElementById('cancelEditUser')?.addEventListener('click', () => {
             editModal.classList.remove('show');
             overlay.classList.remove('show');
         });
 
+        // ===== Overlay click to close =====
         overlay?.addEventListener('click', () => {
             addModal.classList.remove('show');
             editModal.classList.remove('show');

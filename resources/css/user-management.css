@@ -1,6 +1,27 @@
 /* ===== USER MANAGEMENT — Extra Styles ===== */
 /* Extends mp.css — same table, modal, and button conventions */
 
+/* Active Filter Title (inside table-container, matching Menu & Pricing) */
+.active-filter-title {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 1.1rem;
+    font-weight: 800;
+    color: #2d3436;
+    margin-bottom: 1.2rem;
+}
+
+/* Base badge style */
+.badge {
+    display: inline-block;
+    padding: 0.28rem 0.75rem;
+    border-radius: 50px;
+    font-size: 0.78rem;
+    font-weight: 700;
+    letter-spacing: 0.3px;
+}
+
 /* Role Badges */
 .badge-role-admin {
     background-color: #ffeaa7;
