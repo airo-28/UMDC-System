@@ -93,7 +93,7 @@ class TwoFactorController extends Controller
         // Store OTP in cache for 5 minutes
         Cache::put('2fa_otp_' . $user->id, $otp, now()->addMinutes(5));
 
-        $apiToken = config('services.mailtrap.api_token');
+        $apiToken = config('services.brevo.api_token');
 
         if ($apiToken) {
             // Use Mailtrap HTTP API — works on Render (no SMTP port blocking)
@@ -111,22 +111,18 @@ class TwoFactorController extends Controller
     }
 
     /**
-     * Send OTP email via Mailtrap's HTTP Sending API (not blocked by Render).
+     * Send OTP email via Brevo (Sendinblue) HTTP API — no SMTP, works on Render.
      */
     private static function sendViaMailtrap(\App\Models\User $user, string $otp, string $apiToken): bool
     {
-        $fromAddress = config('mail.from.address', 'noreply@umdining.com');
+        $fromAddress = config('mail.from.address', 'noreply@example.com');
         $fromName    = config('mail.from.name', 'UM Dining Center');
 
         $htmlBody = "
         <div style='font-family: Arial, sans-serif; max-width: 480px; margin: auto; padding: 32px;
                     background: #fff; border-radius: 16px; border: 1px solid #f0f0f0;'>
             <div style='text-align: center; margin-bottom: 24px;'>
-                <div style='background: linear-gradient(135deg, #c0392b, #8e1a11); width: 64px; height: 64px;
-                            border-radius: 50%; display: inline-flex; align-items: center; justify-content: center;'>
-                    <span style='color: white; font-size: 28px;'>&#128737;</span>
-                </div>
-                <h2 style='color: #2d3436; margin-top: 16px;'>Two-Factor Verification</h2>
+                <h2 style='color: #2d3436; margin-top: 16px;'>&#128737; Two-Factor Verification</h2>
             </div>
             <p style='color: #636e72;'>Hello, <strong>{$user->first_name}</strong>!</p>
             <p style='color: #636e72;'>Use the code below to complete your login to the UM Dining Center System.</p>
@@ -140,23 +136,25 @@ class TwoFactorController extends Controller
         </div>";
 
         try {
-            $response = Http::withToken($apiToken)
-                ->post('https://send.api.mailtrap.io/api/send', [
-                    'from'    => ['email' => $fromAddress, 'name' => $fromName],
-                    'to'      => [['email' => $user->email, 'name' => $user->first_name]],
-                    'subject' => 'Your UM Dining Center Login Code',
-                    'html'    => $htmlBody,
-                    'text'    => "Your verification code is: {$otp}\nThis code expires in 5 minutes.",
-                ]);
+            $response = Http::withHeaders([
+                'api-key'      => $apiToken,
+                'Content-Type' => 'application/json',
+            ])->post('https://api.brevo.com/v3/smtp/email', [
+                'sender'      => ['email' => $fromAddress, 'name' => $fromName],
+                'to'          => [['email' => $user->email, 'name' => $user->first_name]],
+                'subject'     => 'Your UM Dining Center Login Code',
+                'htmlContent' => $htmlBody,
+                'textContent' => "Your verification code is: {$otp}\nThis code expires in 5 minutes.",
+            ]);
 
             if ($response->successful()) {
                 return true;
             }
 
-            Log::error('Mailtrap API error: ' . $response->status() . ' — ' . $response->body());
+            Log::error('Brevo API error: ' . $response->status() . ' — ' . $response->body());
             return false;
         } catch (\Exception $e) {
-            Log::error('Mailtrap HTTP failed: ' . $e->getMessage());
+            Log::error('Brevo HTTP failed: ' . $e->getMessage());
             return false;
         }
     }

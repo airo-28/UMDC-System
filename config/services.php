@@ -18,8 +18,8 @@ return [
         'key' => env('POSTMARK_API_KEY'),
     ],
 
-    'mailtrap' => [
-        'api_token' => env('MAILTRAP_API_TOKEN'),
+    'brevo' => [
+        'api_token' => env('BREVO_API_KEY'),
     ],
 
     'resend' => [
