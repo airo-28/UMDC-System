@@ -6,6 +6,8 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Mail;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Http;
 use App\Mail\TwoFactorOtpMail;
 
 class TwoFactorController extends Controller
@@ -15,7 +17,6 @@ class TwoFactorController extends Controller
      */
     public function show(Request $request)
     {
-        // If no pending user in session, send back to login
         if (!$request->session()->has('2fa_user_id')) {
             return redirect()->route('login');
         }
@@ -52,7 +53,6 @@ class TwoFactorController extends Controller
         Auth::login($user, remember: false);
         $request->session()->regenerate();
 
-        // Redirect to role-specific landing
         return match ($user->role) {
             'cashier'           => redirect()->route('pos'),
             'kitchen_manager'   => redirect()->route('kp'),
@@ -73,14 +73,18 @@ class TwoFactorController extends Controller
         }
 
         $user = \App\Models\User::find($userId);
-        $this->sendOtp($user);
+        $sent = self::sendOtp($user);
+
+        if (!$sent) {
+            return back()->withErrors(['otp' => 'Could not resend email. Please try again later.']);
+        }
 
         return back()->with('resent', 'A new OTP has been sent to your email.');
     }
 
     /**
-     * Generate and cache an OTP, then email it to the user.
-     * Returns true on success, false on mail failure.
+     * Generate OTP, cache it, and send via Mailtrap HTTP API or fallback Laravel Mail.
+     * Returns true on success, false on failure.
      */
     public static function sendOtp(\App\Models\User $user): bool
     {
@@ -89,11 +93,70 @@ class TwoFactorController extends Controller
         // Store OTP in cache for 5 minutes
         Cache::put('2fa_otp_' . $user->id, $otp, now()->addMinutes(5));
 
+        $apiToken = config('services.mailtrap.api_token');
+
+        if ($apiToken) {
+            // Use Mailtrap HTTP API — works on Render (no SMTP port blocking)
+            return self::sendViaMailtrap($user, $otp, $apiToken);
+        }
+
+        // Fallback: use Laravel Mail (works locally with Gmail SMTP)
         try {
             Mail::to($user->email)->send(new TwoFactorOtpMail($otp, $user->first_name));
             return true;
         } catch (\Exception $e) {
-            \Illuminate\Support\Facades\Log::error('2FA mail failed: ' . $e->getMessage());
+            Log::error('2FA mail failed: ' . $e->getMessage());
+            return false;
+        }
+    }
+
+    /**
+     * Send OTP email via Mailtrap's HTTP Sending API (not blocked by Render).
+     */
+    private static function sendViaMailtrap(\App\Models\User $user, string $otp, string $apiToken): bool
+    {
+        $fromAddress = config('mail.from.address', 'noreply@umdining.com');
+        $fromName    = config('mail.from.name', 'UM Dining Center');
+
+        $htmlBody = "
+        <div style='font-family: Arial, sans-serif; max-width: 480px; margin: auto; padding: 32px;
+                    background: #fff; border-radius: 16px; border: 1px solid #f0f0f0;'>
+            <div style='text-align: center; margin-bottom: 24px;'>
+                <div style='background: linear-gradient(135deg, #c0392b, #8e1a11); width: 64px; height: 64px;
+                            border-radius: 50%; display: inline-flex; align-items: center; justify-content: center;'>
+                    <span style='color: white; font-size: 28px;'>&#128737;</span>
+                </div>
+                <h2 style='color: #2d3436; margin-top: 16px;'>Two-Factor Verification</h2>
+            </div>
+            <p style='color: #636e72;'>Hello, <strong>{$user->first_name}</strong>!</p>
+            <p style='color: #636e72;'>Use the code below to complete your login to the UM Dining Center System.</p>
+            <div style='text-align: center; margin: 32px 0;'>
+                <span style='font-size: 2.5rem; font-weight: 900; letter-spacing: 12px;
+                              color: #c0392b; font-family: monospace;'>{$otp}</span>
+            </div>
+            <p style='color: #b2bec3; font-size: 0.85rem; text-align: center;'>
+                This code expires in <strong>5 minutes</strong>. Do not share it with anyone.
+            </p>
+        </div>";
+
+        try {
+            $response = Http::withToken($apiToken)
+                ->post('https://send.api.mailtrap.io/api/send', [
+                    'from'    => ['email' => $fromAddress, 'name' => $fromName],
+                    'to'      => [['email' => $user->email, 'name' => $user->first_name]],
+                    'subject' => 'Your UM Dining Center Login Code',
+                    'html'    => $htmlBody,
+                    'text'    => "Your verification code is: {$otp}\nThis code expires in 5 minutes.",
+                ]);
+
+            if ($response->successful()) {
+                return true;
+            }
+
+            Log::error('Mailtrap API error: ' . $response->status() . ' — ' . $response->body());
+            return false;
+        } catch (\Exception $e) {
+            Log::error('Mailtrap HTTP failed: ' . $e->getMessage());
             return false;
         }
     }
