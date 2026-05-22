@@ -90,8 +90,8 @@ class TwoFactorController extends Controller
     {
         $otp = str_pad(random_int(0, 999999), 6, '0', STR_PAD_LEFT);
 
-        // Store OTP in cache for 5 minutes
-        Cache::put('2fa_otp_' . $user->id, $otp, now()->addMinutes(5));
+        // Store OTP in cache for 10 minutes
+        Cache::put('2fa_otp_' . $user->id, $otp, now()->addMinutes(10));
 
         $apiToken = config('services.brevo.api_token');
 
@@ -131,7 +131,7 @@ class TwoFactorController extends Controller
                               color: #c0392b; font-family: monospace;'>{$otp}</span>
             </div>
             <p style='color: #b2bec3; font-size: 0.85rem; text-align: center;'>
-                This code expires in <strong>5 minutes</strong>. Do not share it with anyone.
+                This code expires in <strong>10 minutes</strong>. Do not share it with anyone.
             </p>
         </div>";
 
@@ -144,7 +144,7 @@ class TwoFactorController extends Controller
                 'to'          => [['email' => $user->email, 'name' => $user->first_name]],
                 'subject'     => 'Your UM Dining Center Login Code',
                 'htmlContent' => $htmlBody,
-                'textContent' => "Your verification code is: {$otp}\nThis code expires in 5 minutes.",
+                'textContent' => "Your verification code is: {$otp}\nThis code expires in 10 minutes.",
             ]);
 
             if ($response->successful()) {
