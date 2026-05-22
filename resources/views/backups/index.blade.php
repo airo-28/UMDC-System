@@ -13,6 +13,9 @@
         @if(session('error'))
             <div class="my-alert my-alert-error" id="flashAlert">{{ session('error') }}</div>
         @endif
+        @if($errors->any())
+            <div class="my-alert my-alert-error" id="flashAlert">{{ $errors->first() }}</div>
+        @endif
 
         {{-- Header --}}
         <div class="header-container">
@@ -95,14 +98,39 @@
             </table>
         </div>
 
+        {{-- Restore Section --}}
+        <div style="margin-top:1.5rem; background:#fff8f0; border:1px solid #ffd8a8; border-radius:1rem; padding:1.4rem 1.5rem;">
+            <div style="display:flex; align-items:center; gap:0.6rem; margin-bottom:0.8rem;">
+                <i class="fa-solid fa-upload" style="color:#e67e22; font-size:1.1rem;"></i>
+                <span style="font-weight:800; color:#2d3436; font-size:0.95rem;">Restore Database from Backup</span>
+            </div>
+            <p style="font-size:0.83rem; color:#636e72; margin:0 0 1rem;">
+                Upload a previously downloaded <code>.sql</code> backup file to restore the database.
+                <strong style="color:#c0392b;">⚠ Warning:</strong> This will overwrite existing data. Make sure to create a fresh backup first.
+            </p>
+            <form method="POST" action="{{ route('backups.restore') }}" enctype="multipart/form-data"
+                  id="restoreForm" style="display:flex; gap:0.8rem; align-items:center; flex-wrap:wrap;">
+                @csrf
+                <input type="file" name="sql_file" accept=".sql,.txt" id="sqlFileInput" required
+                    style="flex:1; min-width:200px; padding:0.5rem 0.8rem; border:2px solid #ffd8a8;
+                           border-radius:0.6rem; font-size:0.85rem; background:#fff; color:#2d3436;">
+                <button type="submit" id="restoreBtn"
+                    style="padding:0.55rem 1.3rem; background:linear-gradient(135deg,#e67e22,#d35400);
+                           color:white; border:none; border-radius:50px; font-weight:700;
+                           font-size:0.88rem; cursor:pointer; white-space:nowrap;">
+                    <i class="fa-solid fa-rotate-left me-1"></i> Restore Now
+                </button>
+            </form>
+        </div>
+
         {{-- Info card --}}
-        <div style="margin-top:1.5rem; background:#f0f7ff; border:1px solid #d0e8ff; border-radius:1rem; padding:1.2rem 1.5rem; display:flex; gap:1rem; align-items:flex-start;">
+        <div style="margin-top:1rem; background:#f0f7ff; border:1px solid #d0e8ff; border-radius:1rem; padding:1.2rem 1.5rem; display:flex; gap:1rem; align-items:flex-start;">
             <i class="fa-solid fa-circle-info" style="color:#2975da; font-size:1.2rem; margin-top:0.1rem;"></i>
             <div>
                 <div style="font-weight:700; color:#2d3436; font-size:0.9rem; margin-bottom:0.3rem;">About Local Backups</div>
                 <div style="font-size:0.82rem; color:#636e72; line-height:1.6;">
                     Backups are saved as <code>.sql</code> dump files on this server. The last <strong>30 backups</strong> are kept automatically — older ones are pruned.<br>
-                    To restore, use <code>psql &lt; backup_file.sql</code> (PostgreSQL) or import via your database tool.
+                    To restore, upload the <code>.sql</code> file using the form above, or use <code>psql &lt; backup_file.sql</code> (PostgreSQL) from your terminal.
                 </div>
             </div>
         </div>
@@ -113,5 +141,14 @@
         if (flashAlert) {
             setTimeout(() => { flashAlert.style.opacity = '0'; flashAlert.style.transition = 'opacity 0.5s'; setTimeout(() => flashAlert.remove(), 500); }, 3500);
         }
+
+        // Confirm before restoring
+        document.getElementById('restoreForm').addEventListener('submit', function(e) {
+            const file = document.getElementById('sqlFileInput').files[0];
+            if (!file) return;
+            if (!confirm('⚠ Are you sure you want to restore the database from "' + file.name + '"?\n\nThis will overwrite existing data and cannot be undone.')) {
+                e.preventDefault();
+            }
+        });
     </script>
 @endsection

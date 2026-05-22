@@ -54,6 +54,71 @@ class BackupController extends Controller
     }
 
     /**
+     * Restore the database from an uploaded .sql file.
+     */
+    public function restore(Request $request)
+    {
+        $request->validate([
+            'sql_file' => ['required', 'file', 'mimes:sql,txt', 'max:51200'], // max 50MB
+        ]);
+
+        $config   = config('database.connections.' . config('database.default'));
+        $driver   = $config['driver'];
+        $database = $config['database'];
+        $host     = $config['host']     ?? '127.0.0.1';
+        $port     = $config['port']     ?? 5432;
+        $username = $config['username'] ?? '';
+        $password = $config['password'] ?? '';
+
+        // Save uploaded file to a temp path
+        $tmpName = 'restore_tmp_' . time() . '.sql';
+        $tmpPath = storage_path('backups/' . $tmpName);
+
+        if (!is_dir($this->backupDir)) {
+            mkdir($this->backupDir, 0755, true);
+        }
+
+        $request->file('sql_file')->move(storage_path('backups'), $tmpName);
+
+        if ($driver === 'pgsql') {
+            putenv("PGPASSWORD={$password}");
+            $command = sprintf(
+                'psql --host=%s --port=%s --username=%s --dbname=%s --no-password -f %s 2>&1',
+                escapeshellarg($host),
+                escapeshellarg((string) $port),
+                escapeshellarg($username),
+                escapeshellarg($database),
+                escapeshellarg($tmpPath)
+            );
+        } elseif ($driver === 'mysql') {
+            $command = sprintf(
+                'mysql --host=%s --port=%s --user=%s --password=%s %s < %s 2>&1',
+                escapeshellarg($host),
+                escapeshellarg((string) $port),
+                escapeshellarg($username),
+                escapeshellarg($password),
+                escapeshellarg($database),
+                escapeshellarg($tmpPath)
+            );
+        } else {
+            @unlink($tmpPath);
+            return redirect()->route('backups.index')->with('error', "Unsupported database driver: {$driver}");
+        }
+
+        exec($command, $output, $returnCode);
+
+        // Clean up temp file
+        @unlink($tmpPath);
+
+        if ($returnCode !== 0) {
+            $detail = implode(' | ', array_slice($output, 0, 3));
+            return redirect()->route('backups.index')->with('error', "Restore failed (code {$returnCode}): {$detail}");
+        }
+
+        return redirect()->route('backups.index')->with('success', '✅ Database restored successfully from uploaded backup.');
+    }
+
+    /**
      * Download a specific backup file.
      */
     public function download(string $filename): BinaryFileResponse

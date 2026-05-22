@@ -114,6 +114,7 @@ Route::middleware(['auth', 'role:admin'])->group(function () {
 Route::middleware(['auth', 'role:admin'])->group(function () {
     Route::get('/backups',                          [\App\Http\Controllers\BackupController::class, 'index'])   ->name('backups.index');
     Route::post('/backups/run',                     [\App\Http\Controllers\BackupController::class, 'run'])     ->name('backups.run');
+    Route::post('/backups/restore',                 [\App\Http\Controllers\BackupController::class, 'restore']) ->name('backups.restore');
     Route::get('/backups/download/{filename}',      [\App\Http\Controllers\BackupController::class, 'download'])->name('backups.download');
     Route::delete('/backups/{filename}',            [\App\Http\Controllers\BackupController::class, 'destroy']) ->name('backups.destroy');
 });
