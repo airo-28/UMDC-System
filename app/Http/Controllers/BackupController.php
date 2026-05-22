@@ -44,7 +44,12 @@ class BackupController extends Controller
      */
     public function run()
     {
-        Artisan::call('db:backup');
+        $exitCode = Artisan::call('db:backup');
+
+        if ($exitCode !== 0) {
+            return redirect()->route('backups.index')->with('error', 'Backup failed. The database dump tool (pg_dump) may not be available on this server.');
+        }
+
         return redirect()->route('backups.index')->with('success', 'Backup created successfully.');
     }
 
