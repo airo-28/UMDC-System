@@ -55,7 +55,7 @@ class BackupController extends Controller
 
     /**
      * Restore the database from an uploaded .sql file.
-     * Uses PHP/PDO directly — fast, no psql subprocess needed.
+     * Executes SQL statements one-by-one inside a transaction — safe and reliable.
      */
     public function restore(Request $request)
     {
@@ -79,8 +79,34 @@ class BackupController extends Controller
                 throw new \Exception('The uploaded file is empty.');
             }
 
-            // Execute the SQL dump directly via Laravel's DB connection (fast — no subprocess)
-            \Illuminate\Support\Facades\DB::unprepared($sql);
+            // Parse into individual statements (split on ";\n" to avoid
+            // splitting on semicolons inside quoted strings)
+            $rawLines  = explode("\n", $sql);
+            $statement = '';
+            $executed  = 0;
+
+            \Illuminate\Support\Facades\DB::transaction(function () use ($rawLines, &$executed, &$statement) {
+                foreach ($rawLines as $line) {
+                    $trimmed = trim($line);
+
+                    // Skip blank lines and comments
+                    if ($trimmed === '' || str_starts_with($trimmed, '--')) {
+                        continue;
+                    }
+
+                    $statement .= ' ' . $trimmed;
+
+                    // A statement ends when the line ends with ;
+                    if (str_ends_with($trimmed, ';')) {
+                        $stmt = trim($statement);
+                        if ($stmt !== '') {
+                            \Illuminate\Support\Facades\DB::statement($stmt);
+                            $executed++;
+                        }
+                        $statement = '';
+                    }
+                }
+            });
 
         } catch (\Exception $e) {
             @unlink($tmpPath);

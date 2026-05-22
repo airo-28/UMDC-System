@@ -10,6 +10,14 @@ class DatabaseBackup extends Command
     protected $signature   = 'db:backup';
     protected $description = 'Create a SQL data backup using PHP/PDO (fast, no pg_dump needed)';
 
+    // Tables to skip — they are transient / system tables
+    private const SKIP_TABLES = [
+        'sessions', 'cache', 'cache_locks',
+        'jobs', 'job_batches', 'failed_jobs',
+        'personal_access_tokens', 'password_reset_tokens',
+        'telescope_entries', 'telescope_entries_tags', 'telescope_monitoring',
+    ];
+
     public function handle(): int
     {
         $backupDir = storage_path('backups');
@@ -36,10 +44,6 @@ class DatabaseBackup extends Command
         return self::SUCCESS;
     }
 
-    /**
-     * Generate a SQL dump using PHP/PDO — reuses the existing DB connection.
-     * Dumps all table data as INSERT statements with TRUNCATE headers.
-     */
     private function generateSqlDump(): string
     {
         $driver = config('database.default');
@@ -48,9 +52,9 @@ class DatabaseBackup extends Command
         $lines[] = '-- UM Dining Center Database Backup';
         $lines[] = '-- Generated: ' . now()->format('Y-m-d H:i:s T');
         $lines[] = '-- Driver: ' . $driver;
+        $lines[] = '-- Restore: upload this file on the Database Backups page';
         $lines[] = '';
 
-        // Get table names
         $tables = $this->getTableNames($driver);
 
         if (empty($tables)) {
@@ -60,10 +64,15 @@ class DatabaseBackup extends Command
         $pdo = DB::connection()->getPdo();
 
         foreach ($tables as $table) {
+            // Skip transient / system tables
+            if (in_array($table, self::SKIP_TABLES)) {
+                continue;
+            }
+
             $rows = DB::table($table)->get();
 
             $lines[] = "-- -----------------------------------------------";
-            $lines[] = "-- Table: {$table}";
+            $lines[] = "-- Table: {$table}  (" . count($rows) . " rows)";
             $lines[] = "-- -----------------------------------------------";
 
             if ($rows->isEmpty()) {
@@ -72,21 +81,15 @@ class DatabaseBackup extends Command
                 continue;
             }
 
-            // TRUNCATE before re-inserting so restore is clean
-            if ($driver === 'pgsql') {
-                $lines[] = "TRUNCATE TABLE \"{$table}\" RESTART IDENTITY CASCADE;";
-            } else {
-                $lines[] = "SET FOREIGN_KEY_CHECKS=0;";
-                $lines[] = "TRUNCATE TABLE `{$table}`;";
-                $lines[] = "SET FOREIGN_KEY_CHECKS=1;";
-            }
+            // Use safe DELETE + INSERT ON CONFLICT instead of TRUNCATE
+            // to avoid foreign-key cascade issues during restore
+            $tbl = $driver === 'pgsql' ? "\"{$table}\"" : "`{$table}`";
+            $lines[] = "DELETE FROM {$tbl};";
 
             foreach ($rows as $row) {
                 $rowArr  = (array) $row;
                 $columns = $this->quoteColumns(array_keys($rowArr), $driver);
                 $values  = $this->quoteValues(array_values($rowArr), $pdo);
-
-                $tbl = $driver === 'pgsql' ? "\"{$table}\"" : "`{$table}`";
                 $lines[] = "INSERT INTO {$tbl} ({$columns}) VALUES ({$values});";
             }
 
@@ -102,8 +105,6 @@ class DatabaseBackup extends Command
             $rows = DB::select("SELECT tablename FROM pg_tables WHERE schemaname = 'public' ORDER BY tablename");
             return array_map(fn($r) => $r->tablename, $rows);
         }
-
-        // MySQL / MariaDB
         $rows = DB::select('SHOW TABLES');
         return array_map(fn($r) => array_values((array)$r)[0], $rows);
     }
@@ -117,9 +118,9 @@ class DatabaseBackup extends Command
     private function quoteValues(array $values, \PDO $pdo): string
     {
         return implode(', ', array_map(function ($val) use ($pdo) {
-            if ($val === null)         return 'NULL';
-            if ($val === true)         return 'TRUE';
-            if ($val === false)        return 'FALSE';
+            if ($val === null)  return 'NULL';
+            if ($val === true)  return 'TRUE';
+            if ($val === false) return 'FALSE';
             if (is_int($val) || is_float($val)) return $val;
             return $pdo->quote((string) $val);
         }, $values));
@@ -131,8 +132,7 @@ class DatabaseBackup extends Command
         if (!$files || count($files) <= $keep) return;
 
         usort($files, fn($a, $b) => filemtime($a) - filemtime($b));
-        $toDelete = array_slice($files, 0, count($files) - $keep);
-        foreach ($toDelete as $file) {
+        foreach (array_slice($files, 0, count($files) - $keep) as $file) {
             @unlink($file);
         }
     }
